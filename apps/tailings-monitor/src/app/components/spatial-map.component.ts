@@ -8,7 +8,7 @@ import type { MonitoringPoint } from '../domain'
   standalone: true,
   template: `
     <div class="map-panel">
-      <div class="map-head"><div><b>测点分布与巡检路线</b><span>路线长度 {{ routeLength.toFixed(1) }} km · 地图可缩放</span></div><span class="legend"><i class="normal"></i>正常 <i class="warning"></i>预警 <i class="danger"></i>异常</span></div>
+      <div class="map-head"><div><b>测点分布与巡检路线</b><span>路线长度 {{ routeLength.toFixed(1) }} km · 地图可缩放</span></div><span class="legend"><i class="normal"></i>正常 <i class="warning"></i>预警 <i class="danger"></i>异常 <i class="off"></i>停用</span></div>
       <div #mapContainer class="map"></div>
     </div>
   `,
@@ -17,7 +17,7 @@ import type { MonitoringPoint } from '../domain'
     .map-head { display: flex; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid #e2e7e6; }
     .map-head b, .map-head span { display: block; } .map-head span { color: #74827f; font-size: 10px; margin-top: 3px; }
     .legend { display: flex !important; align-items: center; gap: 6px; margin: 0 !important; }
-    .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; } .normal { background: #3e8a6b; } .warning { background: #c28d27; } .danger { background: #b84038; }
+    .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; } .normal { background: #3e8a6b; } .warning { background: #c28d27; } .danger { background: #b84038; } .off { background: #7c8794; }
     .map { height: 420px; }
   `]
 })
@@ -48,7 +48,7 @@ export class SpatialMapComponent implements AfterViewInit, OnChanges {
     if (!this.map) return
     document.querySelectorAll('.point-marker').forEach((element) => element.remove())
     this.points.forEach((point) => {
-      const color = point.status === '异常' ? '#b84038' : point.status === '预警' ? '#c28d27' : '#3e8a6b'
+      const color = point.status === '异常' ? '#b84038' : point.status === '预警' ? '#c28d27' : point.status === '停用' ? '#7c8794' : '#3e8a6b'
       const element = document.createElement('div')
       element.className = 'point-marker'
       element.style.cssText = `width:16px;height:16px;border-radius:50%;background:${color};border:3px solid white;box-shadow:0 1px 5px rgba(0,0,0,.35)`
