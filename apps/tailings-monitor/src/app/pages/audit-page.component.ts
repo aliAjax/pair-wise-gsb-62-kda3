@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input'
 import { MatTableModule } from '@angular/material/table'
 import { Store } from '@ngrx/store'
 import { map } from 'rxjs'
+import { buildReviewPackage } from '../domain'
 import { TailingsApiService } from '../services/tailings-api.service'
 import { selectDataset } from '../store/tailings.selectors'
 
@@ -17,6 +18,18 @@ import { selectDataset } from '../store/tailings.selectors'
   template: `
     <section class="page">
       <div class="head"><div><h2>审计与版本追溯</h2><p>异常创建、原始读数、现场复核、专业意见、处置方案、审批和关闭全部留痕。</p></div><button mat-flat-button color="primary" (click)="exportPackage()">导出审阅包</button></div>
+      <div class="panel decisions">
+        <h3>报警抑制与放行说明</h3>
+        <p>每条触达报警值的读数为何被抑制或放行，随审阅包一并导出。</p>
+        <table mat-table [dataSource]="(dataset$ | async)?.decisions ?? []">
+          <ng-container matColumnDef="time"><th mat-header-cell *matHeaderCellDef>时间</th><td mat-cell *matCellDef="let row">{{ row.createdAt.replace('T', ' ').slice(0, 16) }}</td></ng-container>
+          <ng-container matColumnDef="point"><th mat-header-cell *matHeaderCellDef>测点/读数</th><td mat-cell *matCellDef="let row">{{ row.pointId }} · {{ row.readingId }}</td></ng-container>
+          <ng-container matColumnDef="category"><th mat-header-cell *matHeaderCellDef>类别</th><td mat-cell *matCellDef="let row">{{ row.category }}</td></ng-container>
+          <ng-container matColumnDef="decision"><th mat-header-cell *matHeaderCellDef>判定</th><td mat-cell *matCellDef="let row"><span class="decision" [class.suppressed]="row.decision === '抑制'">{{ row.decision }}</span></td></ng-container>
+          <ng-container matColumnDef="reason"><th mat-header-cell *matHeaderCellDef>说明</th><td mat-cell *matCellDef="let row">{{ row.reason }}<small class="sub" *ngIf="row.anomalyId">关联异常 {{ row.anomalyId }}</small></td></ng-container>
+          <tr mat-header-row *matHeaderRowDef="decisionColumns"></tr><tr mat-row *matRowDef="let row; columns: decisionColumns"></tr>
+        </table>
+      </div>
       <div class="toolbar"><mat-form-field appearance="outline"><mat-label>搜索实体、动作、操作人</mat-label><input matInput [(ngModel)]="keyword" /></mat-form-field><span>共{{ (filtered$ | async)?.length }}条事件</span></div>
       <table mat-table [dataSource]="filtered$ | async" class="panel">
         <ng-container matColumnDef="time"><th mat-header-cell *matHeaderCellDef>时间</th><td mat-cell *matCellDef="let row">{{ row.createdAt.replace('T', ' ').slice(0, 16) }}</td></ng-container>
@@ -29,7 +42,9 @@ import { selectDataset } from '../store/tailings.selectors'
     </section>
   `,
   styles: [`
-    .page { padding: 22px 28px 45px; }.head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }.head h2 { margin: 0 0 5px; font-size: 20px; }.head p { margin: 0; color: #72807d; font-size: 12px; }.toolbar { display: flex; align-items: center; gap: 12px; }.toolbar span { color: #74827f; font-size: 11px; }.panel { width: 100%; background: white; border: 1px solid #d9e1df; }
+    .page { padding: 22px 28px 45px; }.head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }.head h2 { margin: 0 0 5px; font-size: 20px; }.head p { margin: 0; color: #72807d; font-size: 12px; }.toolbar { display: flex; align-items: center; gap: 12px; margin-top: 14px; }.toolbar span { color: #74827f; font-size: 11px; }.panel { width: 100%; background: white; border: 1px solid #d9e1df; }
+    .decisions { margin-bottom: 4px; }.decisions h3 { font-size: 14px; margin: 14px 14px 4px; }.decisions p { margin: 0 14px 8px; color: #7a8784; font-size: 10px; }
+    .decision { padding: 3px 7px; border-radius: 3px; background: #e7f3ee; color: #2e765a; font-size: 11px; }.decision.suppressed { background: #f8efd9; color: #936d20; }.sub { display: block; color: #7c8986; font-size: 10px; margin-top: 3px; }
   `]
 })
 export class AuditPageComponent {
@@ -37,10 +52,12 @@ export class AuditPageComponent {
   private readonly api = inject(TailingsApiService)
   keyword = ''
   readonly columns = ['time', 'entity', 'action', 'operator', 'detail']
-  readonly filtered$ = this.store.select(selectDataset).pipe(map((dataset) => dataset.audit.filter((item) => !this.keyword || `${item.entityId} ${item.action} ${item.operator} ${item.detail}`.includes(this.keyword))))
+  readonly decisionColumns = ['time', 'point', 'category', 'decision', 'reason']
+  readonly dataset$ = this.store.select(selectDataset)
+  readonly filtered$ = this.dataset$.pipe(map((dataset) => dataset.audit.filter((item) => !this.keyword || `${item.entityId} ${item.action} ${item.operator} ${item.detail}`.includes(this.keyword))))
   exportPackage(): void {
-    this.store.select(selectDataset).subscribe((dataset) => {
-      this.api.exportPackage(dataset).subscribe((blob) => {
+    this.dataset$.subscribe((dataset) => {
+      this.api.exportPackage(buildReviewPackage(dataset)).subscribe((blob) => {
         const url = URL.createObjectURL(blob)
         const anchor = document.createElement('a'); anchor.href = url; anchor.download = '尾矿库监测审阅包.json'; anchor.click(); URL.revokeObjectURL(url)
       })

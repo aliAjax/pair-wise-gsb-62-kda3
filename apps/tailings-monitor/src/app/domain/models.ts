@@ -2,6 +2,7 @@ export type MonitoringType = '位移' | '水位' | '渗流' | '降雨'
 export type PointStatus = '正常' | '预警' | '异常'
 export type AnomalyStatus = '待现场复核' | '原因调查中' | '待负责人审批' | '应急联动' | '已关闭'
 export type Severity = '关注' | '较高' | '重大'
+export type AlarmCategory = '设备波动' | '安全阈值'
 
 export interface MonitoringPoint {
   id: string
@@ -36,6 +37,49 @@ export interface RawReading {
   capturedAt: string
   deviceId: string
   quality: '有效' | '可疑' | '无效'
+  origin: '实时' | '回补'
+  supersedesId: string
+}
+
+export interface OutageWindow {
+  id: string
+  pointId: string
+  reason: string
+  startedAt: string
+  endedAt: string
+  createdBy: string
+}
+
+export interface SilenceRule {
+  id: string
+  zone: string
+  reason: string
+  submittedBy: string
+  authorizedBy: string
+  status: '生效' | '已拒绝' | '已解除'
+  createdAt: string
+}
+
+export interface AlarmDecision {
+  id: string
+  pointId: string
+  readingId: string
+  category: AlarmCategory
+  decision: '放行' | '抑制'
+  reason: string
+  anomalyId: string
+  createdAt: string
+}
+
+export interface RecalcTask {
+  id: string
+  anomalyId: string
+  readingId: string
+  status: '重算通过' | '重算失败'
+  attempts: number
+  keptConclusion: string
+  note: string
+  updatedAt: string
 }
 
 export interface ExpertOpinion {
@@ -78,6 +122,10 @@ export interface Anomaly {
   owner: string
   triggerReadingId: string
   observedValue: string
+  category: AlarmCategory
+  determination: string
+  conclusion: string
+  invalidated: boolean
   fieldReviews: FieldReview[]
   opinions: ExpertOpinion[]
   plan: DispositionPlan
@@ -99,5 +147,9 @@ export interface TailingsDataset {
   thresholds: Threshold[]
   readings: RawReading[]
   anomalies: Anomaly[]
+  outageWindows: OutageWindow[]
+  silenceRules: SilenceRule[]
+  decisions: AlarmDecision[]
+  recalcTasks: RecalcTask[]
   audit: AuditEntry[]
 }
